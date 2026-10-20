@@ -1,0 +1,414 @@
+/* Base layout, sidebar, playground, then mobile overrides. */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: white;
+  color: #272823;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+/* Header and branding */
+header {
+  height: 110px;
+  padding: 0 5%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brand {
+  font-size: 43px;
+  letter-spacing: -3px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.brand span {
+  color: #ff6b53;
+}
+
+.tagline {
+  font-size: 13px;
+  color: #90918b;
+  margin: 10px 0 0;
+  letter-spacing: .2px;
+}
+
+.header-right {
+  display: flex;
+  gap: 22px;
+  align-items: center;
+}
+
+.live {
+  font-size: 11px;
+  color: #81857a;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+}
+
+.live:before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: #8cac75;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+.iconbtn {
+  border: 1px solid #e9eae5;
+  background: white;
+  border-radius: 50%;
+  width: 38px;
+  height: 38px;
+  color: #6e7167;
+  font-size: 17px;
+}
+
+.iconbtn:hover {
+  background: #f7f8f4;
+}
+
+/* Two columns: color controls on the left, canvas on the right. */
+.layout {
+  display: grid;
+  grid-template-columns: 158px minmax(0, 1fr);
+  gap: 25px;
+  margin: 8px 5% 0;
+}
+
+.sidebar {
+  padding: 32px 20px 0 0;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 1.8px;
+  color: #909389;
+  margin: 0 0 20px;
+}
+
+.palette {
+  display: grid;
+  grid-template-columns: repeat(2, 44px);
+  gap: 14px;
+}
+
+.swatch {
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 50%;
+  position: relative;
+  transition: transform .2s;
+  background: var(--color);
+}
+
+.swatch:hover {
+  transform: scale(1.1);
+}
+
+.swatch[aria-pressed=true]:after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border: 1px solid var(--color);
+  border-radius: 50%;
+}
+
+.colorname {
+  font-size: 11px;
+  color: #7f8379;
+  margin: 24px 0 38px;
+}
+
+.setting {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  font-size: 11px;
+  color: #6a7063;
+  margin-top: 14px;
+}
+
+.setting input {
+  accent-color: #7b896c;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+}
+
+.rule {
+  height: 1px;
+  background: #edeFe9;
+  margin: 27px 0;
+  width: 102px;
+}
+
+.shortcut {
+  color: #a0a398;
+  font-size: 10px;
+  line-height: 2;
+}
+
+.shortcut kbd {
+  border: 1px solid #e7e9e1;
+  border-radius: 4px;
+  padding: 2px 5px;
+  font: 10px Arial;
+}
+
+/* Overlays ignore clicks so the canvas underneath can receive them. */
+.stage {
+  height: calc(100dvh - 198px);
+  min-height: 370px;
+  max-height: 850px;
+  border: 1px solid #e7e9e1;
+  border-radius: 20px;
+  position: relative;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 8px 32px #48503903;
+  touch-action: none;
+}
+
+.stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+  outline: none;
+}
+
+.stage canvas:focus-visible {
+  box-shadow: inset 0 0 0 2px #b2b8a4;
+  border-radius: 19px;
+}
+
+.stage-top {
+  position: absolute;
+  top: 24px;
+  left: 28px;
+  right: 28px;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.stage-label {
+  font-size: 10px;
+  letter-spacing: 1.6px;
+  color: #a2a798;
+  text-transform: uppercase;
+}
+
+.counts {
+  font-size: 11px;
+  color: #919889;
+  display: flex;
+  gap: 20px;
+}
+
+.counts b {
+  color: #4d5646;
+  font-weight: 500;
+}
+
+.hint {
+  position: absolute;
+  top: 34%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+  transition: opacity .7s;
+  width: 90%;
+}
+
+.hint h1 {
+  font-size: clamp(25px, 3vw, 40px);
+  font-weight: 400;
+  letter-spacing: -1.5px;
+  margin: 0 0 12px;
+  color: #858c7c;
+}
+
+.hint p {
+  font-size: 12px;
+  color: #a0a697;
+  line-height: 1.8;
+  margin: 0;
+}
+
+.hint svg {
+  margin-top: 25px;
+  color: #b7bdac;
+}
+
+.stage-bottom {
+  position: absolute;
+  bottom: 20px;
+  left: 27px;
+  right: 25px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+}
+
+.stage-bottom span {
+  font-size: 10px;
+  color: #a4aa9b;
+}
+
+.clear {
+  pointer-events: auto;
+  border: 1px solid #e6e9e0;
+  border-radius: 20px;
+  padding: 9px 15px;
+  color: #858d7a;
+  font-size: 10px;
+  background: #ffffffef;
+}
+
+.clear:hover {
+  background: #f4f6ef;
+}
+
+/* Footer and temporary status message */
+footer {
+  margin: 22px 5% 25px calc(5% + 183px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #9fa596;
+  font-size: 10px;
+}
+
+.dots-icon {
+  display: inline-flex;
+  gap: 4px;
+  margin-right: 9px;
+  vertical-align: middle;
+}
+
+.dots-icon i {
+  height: 6px;
+  width: 6px;
+  border-radius: 50%;
+}
+
+footer em {
+  font-style: normal;
+  color: #6f7864;
+}
+
+#toast {
+  position: absolute;
+  bottom: 65px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #303a2b;
+  color: white;
+  padding: 10px 16px;
+  border-radius: 20px;
+  font-size: 11px;
+  opacity: 0;
+  transition: opacity .2s;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* On phones, use a single column of colors and give the game more room. */
+@media (max-width: 650px) {
+  header {
+    height: 95px;
+    padding: 0 6%;
+  }
+  .brand {
+    font-size: 37px;
+  }
+  .tagline {
+    font-size: 11px;
+  }
+  .live {
+    display: none;
+  }
+  .layout {
+    grid-template-columns: 52px minmax(0, 1fr);
+    gap: 16px;
+    margin: 5px 4% 0;
+  }
+  .sidebar {
+    padding: 22px 0 0;
+  }
+  .palette {
+    grid-template-columns: 38px;
+    gap: 14px;
+  }
+  .swatch {
+    width: 33px;
+    height: 33px;
+  }
+  .eyebrow {
+    font-size: 8px;
+    letter-spacing: .6px;
+  }
+  .colorname,.rule,.shortcut,.setting {
+    display: none;
+  }
+  .stage {
+    height: calc(100dvh - 160px);
+    min-height: 410px;
+    border-radius: 16px;
+  }
+  .stage-top {
+    left: 16px;
+    right: 16px;
+    top: 20px;
+  }
+  .counts {
+    gap: 8px;
+    font-size: 9px;
+  }
+  .stage-label {
+    font-size: 8px;
+    letter-spacing: 1px;
+  }
+  .hint h1 {
+    font-size: 26px;
+  }
+  .hint p {
+    font-size: 10px;
+  }
+  .stage-bottom {
+    left: 15px;
+    right: 13px;
+    bottom: 14px;
+  }
+  .stage-bottom span {
+    font-size: 8px;
+    max-width: 110px;
+    line-height: 1.6;
+  }
+  footer {
+    margin: 17px 5% 15px calc(4% + 68px);
+    font-size: 8px;
+  }
+  footer>span:last-child {
+    display: none;
+  }
+
+}

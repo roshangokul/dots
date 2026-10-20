@@ -1,33 +1,441 @@
-(()=>{'use strict';
-const colors=[['coral','#ff6b53'],['butter','#eebd48'],['sage','#8bab77'],['sky','#78b6cf'],['lavender','#ad9bd1'],['rose','#e59bad'],['tangerine','#efa15a'],['ink','#606d87']];
-const canvas=document.querySelector('#canvas'),ctx=canvas.getContext('2d'),stage=document.querySelector('#stage');
-let w=800,h=600,balls=[],rings=[],merges=0,selected=0,pointer=null,used=false,sound=false,audio,toastTimer,seed=0,last=0,accum=0;
-const radius=19,gravity=980,restitution=.76;let demoTimer;
-function select(i){selected=i;document.querySelectorAll('.swatch').forEach((b,n)=>b.setAttribute('aria-pressed',String(n===i)));document.querySelector('#colorname').textContent=`${String(i+1).padStart(2,'0')} — ${colors[i][0]}`;}
-colors.forEach(([name,color],i)=>{const b=document.createElement('button');b.className='swatch';b.style.setProperty('--color',color);b.setAttribute('aria-label',name);b.title=`${name} (${i+1})`;b.onclick=()=>select(i);document.querySelector('#palette').append(b)});select(0);
-function resize(){const oldW=w,oldH=h;w=stage.clientWidth;h=stage.clientHeight;const dpr=Math.min(devicePixelRatio||1,2);canvas.width=w*dpr;canvas.height=h*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);for(const b of balls){b.x=Math.max(b.r,Math.min(w-b.r,b.x*w/oldW));b.y=Math.max(b.r,Math.min(h-b.r,b.y*h/oldH));}}new ResizeObserver(resize).observe(stage);resize();
-function counters(){document.querySelector('#dotcount').textContent=balls.length;document.querySelector('#mergecount').textContent=merges;}
-function tone(size,volume=.05){if(!sound)return;try{audio??=new (window.AudioContext||window.webkitAudioContext)();audio.resume();const o=audio.createOscillator(),g=audio.createGain();o.type='sine';o.frequency.setValueAtTime(230+900/(size/10+1),audio.currentTime);o.frequency.exponentialRampToValueAtTime(130,audio.currentTime+.16);g.gain.setValueAtTime(volume,audio.currentTime);g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.22);o.connect(g);g.connect(audio.destination);o.start();o.stop(audio.currentTime+.23)}catch{}}
-function toast(message){const el=document.querySelector('#toast');el.textContent=message;el.style.opacity=1;clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.style.opacity=0,1800);}
-function add(x,y,color=selected,vx=0){if(balls.length>=140){toast('A full little universe. Start fresh to play again.');return}balls.push({id:++seed,x:Math.max(radius+1,Math.min(w-radius-1,x)),y:Math.max(radius+1,Math.min(h-radius-1,y)),vx,vy:0,r:radius,c:color,born:performance.now(),squash:0});counters();}
-function interact(){if(!used){used=true;clearTimeout(demoTimer);document.querySelector('#hint').style.opacity=0;} }
-canvas.addEventListener('pointermove',e=>{const r=canvas.getBoundingClientRect();pointer={x:e.clientX-r.left,y:e.clientY-r.top}});
-canvas.addEventListener('pointerleave',()=>pointer=null);
-canvas.addEventListener('pointerdown',e=>{if(e.button!==0)return;e.preventDefault();canvas.focus();interact();const r=canvas.getBoundingClientRect();pointer={x:e.clientX-r.left,y:e.clientY-r.top};add(pointer.x,pointer.y);tone(radius,.025)});
-function reset(){balls=[];rings=[];merges=0;used=false;document.querySelector('#hint').style.opacity=1;counters();clearTimeout(demoTimer);demoTimer=setTimeout(demo,800);}
-document.querySelector('#reset').onclick=reset;
-document.querySelector('#sound').onclick=()=>{sound=!sound;const el=document.querySelector('#sound');el.setAttribute('aria-pressed',String(sound));el.setAttribute('aria-label',sound?'Turn sound off':'Turn sound on');el.style.color=sound?'#ff6b53':'#6e7167';if(sound)tone(30)};
-window.addEventListener('keydown',e=>{if(e.target.matches('input,button'))return;if(/^[1-8]$/.test(e.key))select(Number(e.key)-1);if(e.code==='Space'){e.preventDefault();interact();add(pointer?.x??w/2,pointer?.y??65)}if(e.key.toLowerCase()==='r')reset()});
-function demo(){if(used)return;const specs=[[.25,0,35],[.43,1,-25],[.59,2,20],[.75,4,-30],[.35,3,15]];specs.forEach(([x,c,v],i)=>{balls.push({id:++seed,x:w*x,y:h-40-i*13,vx:v,vy:-160-i*20,r:25+(i%3)*8,c,born:performance.now()-1000,squash:0})});counters();}demoTimer=setTimeout(demo,500);
-function step(dt){const now=performance.now();for(const b of balls){b.vy+=gravity*dt;b.x+=b.vx*dt;b.y+=b.vy*dt;b.vx*=Math.pow(.995,dt*60);b.squash*=.88;if(b.x<b.r){b.x=b.r;b.vx=Math.abs(b.vx)*restitution}if(b.x>w-b.r){b.x=w-b.r;b.vx=-Math.abs(b.vx)*restitution}if(b.y<b.r){b.y=b.r;b.vy=Math.abs(b.vy)*restitution}if(b.y>h-b.r){b.y=h-b.r;const impact=Math.abs(b.vy);b.vy=-impact*restitution;b.vx*=.985;if(impact<28)b.vy=0;if(impact>100){b.squash=Math.min(.15,impact/3500);tone(b.r,.012)}}}
-for(let pass=0;pass<3;pass++){for(let i=0;i<balls.length;i++){for(let j=i+1;j<balls.length;j++){const a=balls[i],b=balls[j],dx=b.x-a.x,dy=b.y-a.y,sum=a.r+b.r,dist=Math.hypot(dx,dy);if(dist>=sum)continue;
-if(a.c===b.c&&now-a.born>170&&now-b.born>170){const ma=a.r*a.r,mb=b.r*b.r,m=ma+mb;const nr=Math.sqrt(m);if(nr>Math.min(w,h)*.43)continue;const merged={id:++seed,x:(a.x*ma+b.x*mb)/m,y:(a.y*ma+b.y*mb)/m,vx:(a.vx*ma+b.vx*mb)/m,vy:Math.min(-110,(a.vy*ma+b.vy*mb)/m-105),r:nr,c:a.c,born:now,squash:.18};merged.x=Math.max(nr,Math.min(w-nr,merged.x));merged.y=Math.max(nr,Math.min(h-nr,merged.y));rings.push({x:merged.x,y:merged.y,r:nr,c:a.c,life:1});balls.splice(j,1);balls.splice(i,1,merged);merges++;counters();tone(nr,.06);break;}
-const nx=dist>.001?dx/dist:1,ny=dist>.001?dy/dist:0,ma=a.r*a.r,mb=b.r*b.r,invA=1/ma,invB=1/mb,overlap=sum-dist;const correction=Math.max(0,overlap-.05)*.8/(invA+invB);a.x-=nx*correction*invA;a.y-=ny*correction*invA;b.x+=nx*correction*invB;b.y+=ny*correction*invB;const rv=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;if(rv<0){const impulse=-(1+restitution)*rv/(invA+invB);a.vx-=impulse*nx*invA;a.vy-=impulse*ny*invA;b.vx+=impulse*nx*invB;b.vy+=impulse*ny*invB;}}}}
-for(const r of rings)r.life-=dt*2;rings=rings.filter(r=>r.life>0);
+"use strict";
+
+// Distances are pixels; speeds are pixels per second. Tune the game here.
+const DOT_RADIUS = 19;
+const GRAVITY = 980;
+const BOUNCINESS = 0.76;
+const MAX_DOTS = 140;
+const PHYSICS_STEP = 1 / 120;
+const MERGE_DELAY = 170; // Milliseconds before a new dot can merge again.
+
+const COLORS = [
+  { name: "coral", hex: "#ff6b53" },
+  { name: "butter", hex: "#eebd48" },
+  { name: "sage", hex: "#8bab77" },
+  { name: "sky", hex: "#78b6cf" },
+  { name: "lavender", hex: "#ad9bd1" },
+  { name: "rose", hex: "#e59bad" },
+  { name: "tangerine", hex: "#efa15a" },
+  { name: "ink", hex: "#606d87" },
+];
+
+// Find page elements once, rather than searching during every animation frame.
+const canvas = document.querySelector("#canvas");
+const context = canvas.getContext("2d");
+const stage = document.querySelector("#stage");
+const palette = document.querySelector("#palette");
+const colorName = document.querySelector("#colorname");
+const dotCount = document.querySelector("#dotcount");
+const mergeCount = document.querySelector("#mergecount");
+const hint = document.querySelector("#hint");
+const soundButton = document.querySelector("#sound");
+const guideCheckbox = document.querySelector("#guides");
+const slowCheckbox = document.querySelector("#slow");
+const toast = document.querySelector("#toast");
+
+let width = 800;
+let height = 600;
+let dots = [];
+let mergeRings = [];
+let totalMerges = 0;
+let selectedColor = 0;
+let pointer = null;
+let hasStarted = false;
+let soundEnabled = false;
+let audioContext;
+let toastTimer;
+let demoTimer;
+let previousFrameTime = 0;
+let timeToSimulate = 0;
+
+function clamp(value, minimum, maximum) {
+  return Math.max(minimum, Math.min(maximum, value));
 }
-function draw(){ctx.clearRect(0,0,w,h);if(pointer&&document.querySelector('#guides').checked){const x=Math.max(radius,Math.min(w-radius,pointer.x)),y=Math.max(radius,Math.min(h-radius,pointer.y));ctx.save();ctx.setLineDash([3,7]);ctx.strokeStyle=colors[selected][1]+'45';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,y+radius);ctx.lineTo(x,h-12);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=.22;ctx.fillStyle=colors[selected][1];ctx.beginPath();ctx.arc(x,y,radius,0,Math.PI*2);ctx.fill();ctx.restore();}
-for(const r of rings){ctx.beginPath();ctx.arc(r.x,r.y,r.r+(1-r.life)*40,0,Math.PI*2);ctx.strokeStyle=colors[r.c][1];ctx.globalAlpha=r.life*.35;ctx.lineWidth=2;ctx.stroke();}ctx.globalAlpha=1;
-const now=performance.now();for(const b of balls){const age=Math.min(1,(now-b.born)/180),pop=1+.12*Math.sin(age*Math.PI),sx=1+b.squash;ctx.save();ctx.translate(b.x,b.y);ctx.scale(sx*pop,(1-b.squash)*pop);ctx.fillStyle=colors[b.c][1];ctx.beginPath();ctx.arc(0,0,b.r,0,Math.PI*2);ctx.fill();ctx.restore();}}
-function frame(t){const delta=Math.min((t-(last||t))/1000,.04);last=t;accum+=delta*(document.querySelector('#slow').checked?.35:1);let ticks=0;while(accum>=1/120&&ticks++<8){step(1/120);accum-=1/120}draw();requestAnimationFrame(frame)}requestAnimationFrame(frame);
-window.dots={getState:()=>({balls:balls.map(b=>({...b})),merges,width:w,height:h}),drop:add,reset};
-})();
+
+// A dot is a plain object: position, velocity, size, color, and animation state.
+function createDot(x, y, color, radius = DOT_RADIUS) {
+  return {
+    x,
+    y,
+    velocityX: 0,
+    velocityY: 0,
+    radius,
+    color,
+    createdAt: performance.now(),
+    squash: 0,
+  };
+}
+
+// --- Palette and player controls ---
+
+function buildPalette() {
+  COLORS.forEach((color, index) => {
+    const button = document.createElement("button");
+    button.className = "swatch";
+    button.style.setProperty("--color", color.hex);
+    button.setAttribute("aria-label", color.name);
+    button.title = `${color.name} (${index + 1})`;
+    button.addEventListener("click", () => selectColor(index));
+    palette.append(button);
+  });
+  selectColor(0);
+}
+
+function selectColor(index) {
+  selectedColor = index;
+  palette.querySelectorAll("button").forEach((button, buttonIndex) => {
+    button.setAttribute("aria-pressed", String(buttonIndex === index));
+  });
+  const number = String(index + 1).padStart(2, "0");
+  colorName.textContent = `${number} — ${COLORS[index].name}`;
+}
+
+function updateCounters() {
+  dotCount.textContent = dots.length;
+  mergeCount.textContent = totalMerges;
+}
+
+function dropDot(x, y) {
+  if (dots.length >= MAX_DOTS) {
+    showToast("A full little universe. Start fresh to play again.");
+    return;
+  }
+
+  hasStarted = true;
+  clearTimeout(demoTimer);
+  hint.style.opacity = 0;
+  x = clamp(x, DOT_RADIUS + 1, width - DOT_RADIUS - 1);
+  y = clamp(y, DOT_RADIUS + 1, height - DOT_RADIUS - 1);
+  dots.push(createDot(x, y, selectedColor));
+  updateCounters();
+  playTone(DOT_RADIUS, 0.025);
+}
+
+function pointerPosition(event) {
+  const bounds = canvas.getBoundingClientRect();
+  return { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
+}
+
+canvas.addEventListener("pointermove", (event) => {
+  pointer = pointerPosition(event);
+});
+
+canvas.addEventListener("pointerleave", () => {
+  pointer = null;
+});
+
+canvas.addEventListener("pointerdown", (event) => {
+  if (event.button !== 0) return;
+  event.preventDefault();
+  canvas.focus();
+  pointer = pointerPosition(event);
+  dropDot(pointer.x, pointer.y);
+});
+
+window.addEventListener("keydown", (event) => {
+  // Let buttons and checkboxes keep their normal keyboard behavior.
+  if (event.target.matches("input, button")) return;
+  if (/^[1-8]$/.test(event.key)) selectColor(Number(event.key) - 1);
+  if (event.key.toLowerCase() === "r") resetGame();
+  if (event.code === "Space") {
+    event.preventDefault();
+    dropDot(pointer?.x ?? width / 2, pointer?.y ?? 65);
+  }
+});
+
+function resetGame() {
+  dots = [];
+  mergeRings = [];
+  totalMerges = 0;
+  hasStarted = false;
+  hint.style.opacity = 1;
+  updateCounters();
+  clearTimeout(demoTimer);
+  demoTimer = setTimeout(addDemoDots, 800);
+}
+
+function addDemoDots() {
+  if (hasStarted) return;
+  const demo = [
+    { position: 0.25, color: 0, velocity: 35 },
+    { position: 0.43, color: 1, velocity: -25 },
+    { position: 0.59, color: 2, velocity: 20 },
+    { position: 0.75, color: 4, velocity: -30 },
+    { position: 0.35, color: 3, velocity: 15 },
+  ];
+  demo.forEach((item, index) => {
+    const dot = createDot(
+      width * item.position,
+      height - 40 - index * 13,
+      item.color,
+      25 + (index % 3) * 8,
+    );
+    dot.velocityX = item.velocity;
+    dot.velocityY = -160 - index * 20;
+    dot.createdAt -= 1000;
+    dots.push(dot);
+  });
+  updateCounters();
+}
+
+document.querySelector("#reset").addEventListener("click", resetGame);
+soundButton.addEventListener("click", () => {
+  soundEnabled = !soundEnabled;
+  soundButton.setAttribute("aria-pressed", String(soundEnabled));
+  soundButton.setAttribute("aria-label", soundEnabled ? "Turn sound off" : "Turn sound on");
+  soundButton.style.color = soundEnabled ? "#ff6b53" : "#6e7167";
+  if (soundEnabled) playTone(30);
+});
+
+// --- Physics: movement, walls, merging, and collisions ---
+
+function moveDot(dot, seconds) {
+  dot.velocityY += GRAVITY * seconds;
+  dot.x += dot.velocityX * seconds;
+  dot.y += dot.velocityY * seconds;
+  dot.velocityX *= Math.pow(0.995, seconds * 60);
+  dot.squash *= 0.88;
+
+  if (dot.x < dot.radius) {
+    dot.x = dot.radius;
+    dot.velocityX = Math.abs(dot.velocityX) * BOUNCINESS;
+  }
+  if (dot.x > width - dot.radius) {
+    dot.x = width - dot.radius;
+    dot.velocityX = -Math.abs(dot.velocityX) * BOUNCINESS;
+  }
+  if (dot.y < dot.radius) {
+    dot.y = dot.radius;
+    dot.velocityY = Math.abs(dot.velocityY) * BOUNCINESS;
+  }
+  if (dot.y > height - dot.radius) {
+    dot.y = height - dot.radius;
+    const impact = Math.abs(dot.velocityY);
+    dot.velocityY = impact < 28 ? 0 : -impact * BOUNCINESS;
+    dot.velocityX *= 0.985;
+    if (impact > 100) {
+      dot.squash = Math.min(0.15, impact / 3500);
+      playTone(dot.radius, 0.012);
+    }
+  }
+}
+
+function canMerge(first, second, now) {
+  // Keep the existing size limit so a single circle cannot fill the entire stage.
+  const combinedRadius = Math.hypot(first.radius, second.radius);
+  return first.color === second.color
+    && now - first.createdAt > MERGE_DELAY
+    && now - second.createdAt > MERGE_DELAY
+    && combinedRadius <= Math.min(width, height) * 0.43;
+}
+
+function mergeDots(first, second, now) {
+  // Area is proportional to radius squared. Adding areas conserves material;
+  // using area as mass also lets larger dots carry more momentum. Pi cancels out.
+  const firstMass = first.radius ** 2;
+  const secondMass = second.radius ** 2;
+  const totalMass = firstMass + secondMass;
+  const average = (a, b) => (a * firstMass + b * secondMass) / totalMass;
+  const radius = Math.sqrt(totalMass);
+  const merged = createDot(
+    clamp(average(first.x, second.x), radius, width - radius),
+    clamp(average(first.y, second.y), radius, height - radius),
+    first.color,
+    radius,
+  );
+  merged.velocityX = average(first.velocityX, second.velocityX);
+  merged.velocityY = Math.min(-110, average(first.velocityY, second.velocityY) - 105);
+  merged.createdAt = now;
+  merged.squash = 0.18;
+
+  // The upward kick and expanding ring give each merge a little pop.
+  mergeRings.push({ x: merged.x, y: merged.y, radius, color: merged.color, life: 1 });
+  totalMerges++;
+  playTone(radius, 0.06);
+  return merged;
+}
+
+function bounceDots(first, second, distance, offsetX, offsetY) {
+  // The normal points between the centers. Choose a horizontal normal when
+  // centers coincide, since dividing by zero would corrupt the simulation.
+  const normalX = distance > 0.001 ? offsetX / distance : 1;
+  const normalY = distance > 0.001 ? offsetY / distance : 0;
+  const inverseMassFirst = 1 / first.radius ** 2;
+  const inverseMassSecond = 1 / second.radius ** 2;
+  const inverseMassTotal = inverseMassFirst + inverseMassSecond;
+
+  // Push overlapping dots apart, moving the smaller (lighter) dot farther.
+  const overlap = first.radius + second.radius - distance;
+  const correction = Math.max(0, overlap - 0.05) * 0.8 / inverseMassTotal;
+  first.x -= normalX * correction * inverseMassFirst;
+  first.y -= normalY * correction * inverseMassFirst;
+  second.x += normalX * correction * inverseMassSecond;
+  second.y += normalY * correction * inverseMassSecond;
+
+  const approachSpeed = (second.velocityX - first.velocityX) * normalX
+    + (second.velocityY - first.velocityY) * normalY;
+  if (approachSpeed >= 0) return; // Already separating; no extra bounce needed.
+
+  const impulse = -(1 + BOUNCINESS) * approachSpeed / inverseMassTotal;
+  first.velocityX -= impulse * normalX * inverseMassFirst;
+  first.velocityY -= impulse * normalY * inverseMassFirst;
+  second.velocityX += impulse * normalX * inverseMassSecond;
+  second.velocityY += impulse * normalY * inverseMassSecond;
+}
+
+function resolveCollisions(now) {
+  for (let firstIndex = 0; firstIndex < dots.length; firstIndex++) {
+    for (let secondIndex = firstIndex + 1; secondIndex < dots.length; secondIndex++) {
+      const first = dots[firstIndex];
+      const second = dots[secondIndex];
+      const offsetX = second.x - first.x;
+      const offsetY = second.y - first.y;
+      const distance = Math.hypot(offsetX, offsetY);
+      if (distance >= first.radius + second.radius) continue;
+
+      if (canMerge(first, second, now)) {
+        dots[firstIndex] = mergeDots(first, second, now);
+        dots.splice(secondIndex, 1);
+        updateCounters();
+        break; // Check the replacement dot on the next collision pass.
+      }
+      bounceDots(first, second, distance, offsetX, offsetY);
+    }
+  }
+}
+
+function updatePhysics(seconds) {
+  const now = performance.now();
+  dots.forEach((dot) => moveDot(dot, seconds));
+  // Repeat collision resolution to help stacks settle without sinking together.
+  for (let pass = 0; pass < 3; pass++) resolveCollisions(now);
+  mergeRings.forEach((ring) => { ring.life -= seconds * 2; });
+  mergeRings = mergeRings.filter((ring) => ring.life > 0);
+}
+
+// --- Drawing ---
+
+function drawCircle(x, y, radius) {
+  context.beginPath();
+  context.arc(x, y, radius, 0, Math.PI * 2);
+  context.fill();
+}
+
+function drawDropGuide() {
+  if (!pointer || !guideCheckbox.checked) return;
+  const x = clamp(pointer.x, DOT_RADIUS, width - DOT_RADIUS);
+  const y = clamp(pointer.y, DOT_RADIUS, height - DOT_RADIUS);
+  context.save();
+  context.setLineDash([3, 7]);
+  context.strokeStyle = COLORS[selectedColor].hex + "45";
+  context.beginPath();
+  context.moveTo(x, y + DOT_RADIUS);
+  context.lineTo(x, height - 12);
+  context.stroke();
+  context.setLineDash([]);
+  context.globalAlpha = 0.22;
+  context.fillStyle = COLORS[selectedColor].hex;
+  drawCircle(x, y, DOT_RADIUS);
+  context.restore();
+}
+
+function drawMergeRings() {
+  context.save();
+  for (const ring of mergeRings) {
+    context.beginPath();
+    context.arc(ring.x, ring.y, ring.radius + (1 - ring.life) * 40, 0, Math.PI * 2);
+    context.strokeStyle = COLORS[ring.color].hex;
+    context.globalAlpha = ring.life * 0.35;
+    context.lineWidth = 2;
+    context.stroke();
+  }
+  context.restore();
+}
+
+function drawDot(dot, now) {
+  const age = Math.min(1, (now - dot.createdAt) / 180);
+  const pop = 1 + 0.12 * Math.sin(age * Math.PI);
+  context.save();
+  context.translate(dot.x, dot.y);
+  // Briefly stretch sideways and squash vertically after an impact.
+  context.scale((1 + dot.squash) * pop, (1 - dot.squash) * pop);
+  context.fillStyle = COLORS[dot.color].hex;
+  drawCircle(0, 0, dot.radius);
+  context.restore();
+}
+
+function draw() {
+  context.clearRect(0, 0, width, height);
+  drawDropGuide();
+  drawMergeRings();
+  const now = performance.now();
+  dots.forEach((dot) => drawDot(dot, now));
+}
+
+function resizeCanvas() {
+  const oldWidth = width;
+  const oldHeight = height;
+  width = stage.clientWidth;
+  height = stage.clientHeight;
+  // Extra canvas pixels keep circles sharp on Retina screens.
+  const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = width * pixelRatio;
+  canvas.height = height * pixelRatio;
+  context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+  for (const dot of dots) {
+    dot.x = clamp(dot.x * width / oldWidth, dot.radius, width - dot.radius);
+    dot.y = clamp(dot.y * height / oldHeight, dot.radius, height - dot.radius);
+  }
+}
+
+// --- Optional sound and short status messages ---
+
+function playTone(size, volume = 0.05) {
+  if (!soundEnabled) return;
+  try {
+    // Browsers require a user gesture before starting audio.
+    audioContext ??= new (window.AudioContext || window.webkitAudioContext)();
+    audioContext.resume();
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    const now = audioContext.currentTime;
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(230 + 900 / (size / 10 + 1), now);
+    oscillator.frequency.exponentialRampToValueAtTime(130, now + 0.16);
+    gain.gain.setValueAtTime(volume, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+    oscillator.start();
+    oscillator.stop(now + 0.23);
+  } catch {
+    // Audio is optional; an unavailable device should never stop play.
+  }
+}
+
+function showToast(message) {
+  toast.textContent = message;
+  toast.style.opacity = 1;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toast.style.opacity = 0; }, 1800);
+}
+
+// Fixed physics steps keep motion consistent across screen refresh rates.
+// Cap elapsed time so returning from a background tab doesn't cause a huge jump.
+function animate(timestamp) {
+  const elapsed = Math.min((timestamp - (previousFrameTime || timestamp)) / 1000, 0.04);
+  previousFrameTime = timestamp;
+  timeToSimulate += elapsed * (slowCheckbox.checked ? 0.35 : 1);
+  while (timeToSimulate >= PHYSICS_STEP) {
+    updatePhysics(PHYSICS_STEP);
+    timeToSimulate -= PHYSICS_STEP;
+  }
+  draw();
+  requestAnimationFrame(animate);
+}
+
+buildPalette();
+resizeCanvas();
+new ResizeObserver(resizeCanvas).observe(stage);
+demoTimer = setTimeout(addDemoDots, 500);
+requestAnimationFrame(animate);
